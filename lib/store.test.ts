@@ -1,7 +1,7 @@
 // Ciclo completo dei dati con un finto client Supabase in memoria.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { registra, avviaSessione, aggiornaSessione, storico, cancellaDati, getGiocatore, ultimaChiusa } from './store';
+import { registra, avviaSessione, aggiornaSessione, storico, cancellaDati, getGiocatore, ultimaChiusa, getProfilo } from './store';
 import { hashGiocatore } from './privacy';
 import { DOMANDE, PNR, type Risposte } from './intervista/domande';
 import { TOPICS, proposalsFor } from './sim/catalog';
@@ -10,12 +10,12 @@ import { lineeGrafico } from './sessioni';
 
 type Row = Record<string, any>;
 const PK: Record<string, string[]> = {
-  giocatori: ['hash'], interviste: ['hash'], sessioni: ['hash', 'numero'], record_sessioni: ['hash'],
+  giocatori: ['hash'], profili: ['hash'], sessioni: ['hash', 'numero'], record_sessioni: ['hash'],
 };
-const FK_CASCATA = ['interviste', 'sessioni', 'record_sessioni'];
+const FK_CASCATA = ['profili', 'sessioni', 'record_sessioni'];
 
 function fakeDb() {
-  const t: Record<string, Row[]> = { giocatori: [], interviste: [], sessioni: [], record_sessioni: [] };
+  const t: Record<string, Row[]> = { giocatori: [], profili: [], sessioni: [], record_sessioni: [] };
   const key = (table: string, r: Row) => PK[table].map((k) => r[k]).join('|');
 
   function from(table: string) {
@@ -111,6 +111,29 @@ test('registrazione: serve il consenso, una sola volta, niente minorenni', async
   assert.ok(!JSON.stringify(t).includes('"u"'), 'l\'id utente non finisce nel database');
 });
 
+test('GDPR: nel database finisce il punteggio, mai le risposte dell\'intervista', async () => {
+  const { db, t } = fakeDb();
+  const h = hashGiocatore('u3', PEPPER);
+  const ora = new Date('2026-11-15T10:00:00Z');
+  const risposte = { ...risposteValide(), orientamento: 'eterosessuale', autocollocazione: '9', priorita: 'debito' };
+
+  await registra(db, h, { side: 'destra', risposte, consensoDatiDelicati: true }, ora);
+
+  const dump = JSON.stringify(t);
+  // 'priorita' è l'unica risposta che sopravvive, perché è uno dei quattro valori del punteggio
+  for (const id of Object.keys(risposte).filter((k) => k !== 'priorita')) {
+    assert.ok(!dump.includes(`"${id}"`), `la risposta "${id}" non deve finire nel database`);
+  }
+  assert.ok(!dump.includes('eterosessuale'), 'nessun dato dell\'art. 9 GDPR nel database');
+
+  // resta solo il punteggio, e basta a sé stesso per il confronto di fine partita
+  assert.equal(t.profili.length, 1);
+  assert.deepEqual(Object.keys(t.profili[0]).sort(), ['hash', 'punteggio']);
+  const punteggio = await getProfilo(db, h);
+  assert.deepEqual(Object.keys(punteggio!).sort(), ['federalismo', 'liberismo', 'priorita', 'sinistraDestra']);
+  assert.equal(punteggio!.priorita, 'debito');
+});
+
 test('ciclo di 40 partite: 24 ore ciascuna, ultime 30 + record conservati', async () => {
   const { db, t } = fakeDb();
   const h = hashGiocatore('u2', PEPPER);
@@ -153,5 +176,5 @@ test('ciclo di 40 partite: 24 ore ciascuna, ultime 30 + record conservati', asyn
   assert.equal((await avviaSessione(db, h, leggiSx(0), 7, ora)).numero, 41);
 
   await cancellaDati(db, h);
-  assert.equal(t.giocatori.length + t.interviste.length + t.sessioni.length + t.record_sessioni.length, 0);
+  assert.equal(t.giocatori.length + t.profili.length + t.sessioni.length + t.record_sessioni.length, 0);
 });

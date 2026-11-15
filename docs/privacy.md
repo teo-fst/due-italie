@@ -11,14 +11,23 @@ tutti gli obblighi del GDPR. L'hash riduce il rischio, non lo elimina.
 
 ## Dati trattati
 
-| Dato | Categoria | Dove |
-|---|---|---|
-| Anno di nascita (ricavato dal codice fiscale nel browser) | Personale | `interviste.risposte.anno` |
-| Opinioni politiche (autocollocazione, 16 affermazioni, fiducia nell'UE) | **Particolare, art. 9** | `interviste.risposte` |
-| Orientamento sessuale | **Particolare, art. 9** | `interviste.risposte` |
-| Genere, fascia d'età, zona, lavoro, studio, reddito, casa | Personali | `interviste.risposte` |
-| Scelta dell'Italia (sinistra/destra) | Rivela opinioni politiche: trattarla come **art. 9** | `giocatori.side` |
-| Timing di vita (inizio e fine partite), leggi votate, risultati | Personali (comportamento) | `sessioni`, `record_sessioni` |
+Le 30 risposte dell'intervista sono **trattate ma non conservate**: arrivano al server, servono alla
+convalida (completezza, blocco minorenni) e al calcolo del punteggio, e finiscono lì. Nessuna tabella ha
+una colonna dove possano essere scritte.
+
+| Dato | Categoria | Conservato? | Dove |
+|---|---|---|---|
+| Codice fiscale | Personale | **no**, mai trasmesso | resta nel browser |
+| Anno di nascita | Personale | **no**, solo convalidato | — |
+| Risposte su opinioni politiche, orientamento sessuale, genere, zona, lavoro, studio, reddito, casa | **Particolari (art. 9) e personali** | **no**, scartate dopo il calcolo | — |
+| Punteggio: posizione sinistra ↔ destra e Stato ↔ mercato | Rivela opinioni politiche: **art. 9** | sì | `profili.punteggio` |
+| Punteggio: centralismo ↔ federalismo, priorità indicata | Personali | sì | `profili.punteggio` |
+| Scelta dell'Italia (sinistra/destra) | Rivela opinioni politiche: trattarla come **art. 9** | sì | `giocatori.side` |
+| Timing di vita (inizio e fine partite), leggi votate, risultati | Personali (comportamento) | sì | `sessioni`, `record_sessioni` |
+
+L'orientamento sessuale non entra nel punteggio: viene chiesto, usato per nulla che resti, e scartato.
+Se non serve a un'analisi dichiarata, la domanda andrebbe tolta: raccogliere un dato dell'art. 9 che non
+si usa è difficile da giustificare davanti al principio di minimizzazione (art. 5.1.c).
 
 ## Misure già nel codice
 
@@ -27,6 +36,10 @@ tutti gli obblighi del GDPR. L'hash riduce il rischio, non lo elimina.
 - **RLS senza policy**: dal browser non si legge nessuna tabella; solo il server con la chiave secret.
 - **Consenso esplicito e separato** per i dati art. 9 (art. 9.2.a), registrato con data (`consenso_dati_delicati_at`).
 - **Minimizzazione**: ogni domanda delicata ha «Preferisco non rispondere»; età in fasce.
+- **Intervista non conservata**: nel database va solo il punteggio di quattro valori (`profili.punteggio`),
+  che basta al confronto di fine partita. Una partita può durare più di un giorno, chiudersi e riaprirsi,
+  senza che il questionario persista. Chi legge il database non può ricostruire le risposte dal punteggio:
+  è una media di 16 affermazioni, non è invertibile.
 - **Codice fiscale mai trasmesso**: il browser ne verifica il carattere di controllo, ricava data di nascita e
   maggiore età, invia solo l'anno e svuota il campo. Il CF non passa dal server, dai log né dal database.
   È un controllo di plausibilità, non una verifica d'identità.
