@@ -66,9 +66,6 @@ a { color: inherit; }
 .calendario span { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: #e6e6e3; color: var(--muted); }
 .calendario span.oggi { background: var(--ink); color: #fff; }
 
-.proposta { display: block; width: 100%; text-align: left; border: 2px solid #e6e6e3; background: #fff; border-radius: 12px; padding: 14px; cursor: pointer; }
-.proposta[aria-pressed="true"] { border-color: var(--ink); }
-.proposta strong { display: block; margin-bottom: 4px; }
 .piccolo { font-size: 13px; color: var(--muted); }
 .errore { color: var(--sx); font-weight: 700; }
 
@@ -79,3 +76,26 @@ a { color: inherit; }
 input[type="email"] { width: 100%; font-size: 16px; padding: 14px; border-radius: 12px; border: 2px solid #e6e6e3; }
 nav.top { display: flex; gap: 14px; justify-content: center; padding: 12px; font-weight: 800; font-size: 13px; text-transform: uppercase; }
 nav.top a { text-decoration: none; }
+
+/* v2: registrazione, intervista, partite */
+.btn.chiaro { background: #fff; color: var(--ink); border: 2px solid var(--ink); }
+.spunta { display: flex; gap: 10px; align-items: flex-start; line-height: 1.35; }
+.spunta input { margin-top: 3px; width: 20px; height: 20px; flex: none; }
+fieldset { border: 0; margin: 0; }
+.domanda legend { font-weight: 800; margin-bottom: 10px; padding: 0; }
+.opzioni { display: grid; gap: 8px; }
+.opzioni.griglia { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+.opzione, .proposta { position: relative; display: flex; flex-direction: column; gap: 4px; border: 2px solid #e6e6e3; background: #fff; border-radius: 12px; padding: 12px 14px; cursor: pointer; min-height: 48px; justify-content: center; }
+.opzione input, .proposta input { position: absolute; opacity: 0; pointer-events: none; }
+.opzione:focus-within, .proposta:focus-within { outline: 3px solid var(--ink); outline-offset: 2px; }
+.scelta-attiva { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.opzione.pnr { color: var(--muted); font-style: italic; }
+.pro { color: #1f6f43; font-size: 14px; }
+.contro { color: #9c2a2e; font-size: 14px; }
+.eventi { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.grafico { margin: 0; }
+.legenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: #4b5058; margin-top: 8px; }
+.legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.campo { width: 100%; font-size: 18px; letter-spacing: .08em; padding: 14px; border-radius: 12px; border: 2px solid #e6e6e3; font-family: ui-monospace, monospace; }
+.impatto { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #eee; color: #3b3f45; }
+.impatto.i4, .impatto.i5 { background: #16181d; color: #fff; }
