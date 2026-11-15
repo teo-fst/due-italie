@@ -1,0 +1,81 @@
+:root {
+  --sx: #e5484d;        /* Sinistra = rosso (come nel reel) */
+  --dx: #2f55d4;        /* Destra = blu */
+  --ink: #16181d;
+  --muted: #8a8f98;
+  --bg: #f3f3f1;
+  --card: #ffffff;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background-color: var(--bg);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.07) 1px, transparent 1px);
+  background-size: 18px 18px;
+  min-height: 100dvh;
+}
+main { max-width: 560px; margin: 0 auto; padding: 24px 18px 64px; }
+a { color: inherit; }
+
+.badge {
+  display: inline-block; background: var(--ink); color: #fff;
+  font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px;
+}
+.titolo { font-size: 30px; font-weight: 900; text-transform: uppercase; line-height: 1.05; margin: 14px 0; }
+.titolo .grigio { color: var(--muted); }
+.sx { color: var(--sx); } .dx { color: var(--dx); }
+
+.card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 6px 20px rgba(0,0,0,.05); }
+.stack > * + * { margin-top: 14px; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 0; border-radius: 12px; padding: 14px 18px; min-height: 48px;
+  font-weight: 800; font-size: 16px; text-transform: uppercase; cursor: pointer;
+  background: var(--ink); color: #fff; text-decoration: none;
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn.sx { background: var(--sx); color: #fff; } .btn.dx { background: var(--dx); color: #fff; }
+
+.scelta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.carta {
+  aspect-ratio: 3 / 4; border-radius: 16px; border: 3px solid transparent; color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+  padding: 14px; font-weight: 900; font-size: 18px; text-transform: uppercase; cursor: pointer;
+}
+.carta.sx { background: var(--sx); } .carta.dx { background: var(--dx); }
+.carta[aria-pressed="true"] { border-color: var(--ink); transform: translateY(-2px); }
+.carta[aria-pressed="false"].spenta { opacity: .35; }
+.carta .mappa { font-size: 64px; flex: 1; display: grid; place-items: center; }
+
+.progress { height: 10px; background: #e6e6e3; border-radius: 999px; overflow: hidden; }
+.progress > span { display: block; height: 100%; background: var(--ink); }
+
+.tabella { width: 100%; border-collapse: collapse; }
+.tabella th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); text-align: center; padding: 6px; }
+.tabella th:first-child, .tabella td:first-child { text-align: left; }
+.tabella td { padding: 10px 6px; border-top: 1px solid #eee; text-align: center; font-variant-numeric: tabular-nums; }
+.freccia { font-weight: 900; }
+
+.calendario { display: flex; gap: 6px; justify-content: center; }
+.calendario span { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: #e6e6e3; color: var(--muted); }
+.calendario span.oggi { background: var(--ink); color: #fff; }
+
+.proposta { display: block; width: 100%; text-align: left; border: 2px solid #e6e6e3; background: #fff; border-radius: 12px; padding: 14px; cursor: pointer; }
+.proposta[aria-pressed="true"] { border-color: var(--ink); }
+.proposta strong { display: block; margin-bottom: 4px; }
+.piccolo { font-size: 13px; color: var(--muted); }
+.errore { color: var(--sx); font-weight: 700; }
+
+.dado { font-size: 56px; display: inline-block; animation: rotola 1.2s cubic-bezier(.2,.8,.2,1) 1; }
+@keyframes rotola { from { transform: rotate(-540deg) scale(.4); opacity: 0; } to { transform: rotate(0) scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dado { animation: none; } }
+
+input[type="email"] { width: 100%; font-size: 16px; padding: 14px; border-radius: 12px; border: 2px solid #e6e6e3; }
+nav.top { display: flex; gap: 14px; justify-content: center; padding: 12px; font-weight: 800; font-size: 13px; text-transform: uppercase; }
+nav.top a { text-decoration: none; }
