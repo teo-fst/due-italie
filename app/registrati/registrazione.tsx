@@ -69,12 +69,14 @@ export function Registrazione() {
             Il codice fiscale serve solo a ricavare l&apos;anno di nascita: resta nel tuo browser e viene dimenticato subito.
             Puoi sempre scegliere <b>«Preferisco non rispondere»</b>. Non chiediamo email né nome:
             ti riconosciamo con un codice anonimo sul tuo dispositivo e salviamo solo un hash.
+            <b> Le risposte non le conserviamo:</b> da queste ricaviamo un punteggio di quattro valori, che serve
+            a confrontare il tuo profilo con come giochi, e il questionario viene scartato.
           </p>
           <label className="spunta"><input type="checkbox" checked={maggiorenne} onChange={(e) => setMaggiorenne(e.target.checked)} /> Ho almeno 18 anni</label>
           <label className="spunta"><input type="checkbox" checked={informativa} onChange={(e) => setInformativa(e.target.checked)} /> Ho letto <Link href="/privacy" target="_blank">l&apos;informativa privacy</Link></label>
           <label className="spunta">
             <input type="checkbox" checked={consenso} onChange={(e) => setConsenso(e.target.checked)} />
-            Acconsento esplicitamente al trattamento delle mie risposte su opinioni politiche e orientamento sessuale per questa ricerca (art. 9 GDPR). Posso ritirare il consenso e cancellare tutto in ogni momento.
+            Acconsento esplicitamente al trattamento delle mie risposte su opinioni politiche e orientamento sessuale per questa ricerca (art. 9 GDPR): vengono usate per calcolare il punteggio e poi scartate, non restano salvate. Posso ritirare il consenso e cancellare tutto in ogni momento.
           </label>
         </section>
       )}

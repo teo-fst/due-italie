@@ -2,10 +2,12 @@
 \set ON_ERROR_STOP 0
 \set H1 '''aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'''
 
-\echo '== service_role registra un giocatore, intervista e sessione (atteso OK)'
+\echo '== service_role registra un giocatore, punteggio e sessione (atteso OK)'
 set role service_role;
 insert into public.giocatori (hash, side, consenso_dati_delicati_at) values (:H1, 'sinistra', now());
-insert into public.interviste (hash, risposte, profilo) values (:H1, '{"eta":"35-44"}', '{}');
+insert into public.profili (hash, punteggio) values (:H1, '{"sinistraDestra":-0.4,"liberismo":0.1,"federalismo":null,"priorita":"debito"}');
+\echo '== la tabella profili non ha una colonna per le risposte (atteso ERRORE: colonna inesistente)'
+insert into public.profili (hash, risposte) values (repeat('c', 64), '{"orientamento":"x"}');
 insert into public.sessioni (hash, numero, side, seed, leggi) values (:H1, 1, 'sinistra', 123, '{}');
 \echo '== seconda sessione aperta per lo stesso giocatore (atteso ERRORE indice univoco)'
 insert into public.sessioni (hash, numero, side, seed, leggi) values (:H1, 2, 'sinistra', 456, '{}');
@@ -23,7 +25,7 @@ reset role;
 \echo '== anon e authenticated non vedono e non scrivono nulla (atteso permesso negato x4)'
 set role anon;
 select count(*) from public.giocatori;
-select count(*) from public.interviste;
+select count(*) from public.profili;
 reset role;
 set role authenticated;
 select count(*) from public.sessioni;
@@ -33,7 +35,7 @@ reset role;
 \echo '== cancellazione dei dati: a cascata (atteso 0 0 0)'
 set role service_role;
 delete from public.giocatori where hash = :H1;
-select (select count(*) from public.interviste) as interviste,
+select (select count(*) from public.profili) as profili,
        (select count(*) from public.sessioni) as sessioni,
        (select count(*) from public.record_sessioni) as record;
 reset role;

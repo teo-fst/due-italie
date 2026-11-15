@@ -14,7 +14,11 @@ export default function Privacy() {
         <h2 className="badge">Cosa salviamo</h2>
         <ul>
           <li>La tua <b>scelta iniziale</b> (Italia di sinistra o di destra) e la data del consenso.</li>
-          <li>Le <b>30 risposte dell&apos;intervista</b> e il profilo calcolato.</li>
+          <li>
+            Un <b>punteggio</b> di quattro valori ricavato dall&apos;intervista (sinistra ↔ destra, Stato ↔ mercato,
+            centralismo ↔ federalismo, la priorità che hai indicato). <b>Le 30 risposte non le salviamo:</b> servono
+            a calcolare il punteggio e vengono scartate subito.
+          </li>
           <li>Il <b>timing di vita</b> delle partite (inizio e fine), le leggi votate e i risultati.</li>
           <li>Solo le ultime 30 partite, più la partita record.</li>
         </ul>
@@ -28,6 +32,12 @@ export default function Privacy() {
         <p>
           Opinioni politiche e orientamento sessuale sono categorie particolari (art. 9 GDPR): li raccogliamo solo con il tuo
           consenso esplicito e puoi sempre rispondere «Preferisco non rispondere». Il gioco è riservato ai maggiorenni.
+        </p>
+        <p>
+          Le risposte su queste categorie <b>non vengono conservate</b>: arrivano al server, servono a controllare che
+          l&apos;intervista sia completa e a calcolare il punteggio, poi spariscono. L&apos;orientamento sessuale non
+          entra nemmeno nel punteggio. Così una partita può durare più giorni, chiudersi e riaprirsi, senza che il
+          questionario resti da nessuna parte.
         </p>
       </section>
       <section className="card stack">

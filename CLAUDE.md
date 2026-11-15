@@ -18,7 +18,7 @@ Regole complete: `docs/linee-guida-reel.md` (sezione v2). Non cambiarle senza ch
 
 ## Comandi
 - `npm install` poi committa `package-lock.json`.
-- `npm test` – motore, intervista e codice fiscale, sessioni/grafico, ciclo dati (39 test, devono restare verdi).
+- `npm test` – motore, intervista e codice fiscale, sessioni/grafico, ciclo dati (40 test, devono restare verdi).
 - `npm run typecheck`, `npm run build`, `npm run dev`.
 - `supabase start` / `supabase db reset`. Abilitare **Anonymous sign-ins** (Auth → Providers) e un CAPTCHA (Turnstile).
 - Script SQL: `supabase/tests/01_scenari_privacy.sql` (vedi README).
@@ -36,6 +36,10 @@ Regole complete: `docs/linee-guida-reel.md` (sezione v2). Non cambiarle senza ch
    Tutte le domande delicate hanno «Preferisco non rispondere». Minorenni bloccati. Cancellazione a cascata.
    Il **codice fiscale** si legge solo nel browser (`lib/intervista/codice-fiscale.ts`): al server arriva solo l'anno.
    Non aggiungere mai un campo, un log o una chiamata che invii il codice fiscale.
+   **L'intervista non si conserva**: le 30 risposte servono alla convalida e al calcolo del punteggio, poi restano
+   solo in memoria per la durata della richiesta. Nel database va il solo `profili.punteggio` (4 valori), che basta
+   al confronto di fine partita: così una partita può durare giorni, chiudersi e riaprirsi, senza il questionario.
+   Non aggiungere mai una colonna, un log o una cache che faccia sopravvivere le risposte alla richiesta.
 6. **Conservazione**: ultime 30 partite chiuse + record salvato a parte (`lib/sessioni.ts`, testato).
 7. **Grafico storico**: ultime 5 partite, Italia di destra grigio pieno, di sinistra grigio tratteggiato, record
    arancione (sesta linea se non è tra le 5). Legenda e tabella sempre presenti.

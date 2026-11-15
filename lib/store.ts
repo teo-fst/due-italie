@@ -23,11 +23,18 @@ export async function getGiocatore(db: Db, hash: string): Promise<Giocatore | nu
 }
 
 export async function getProfilo(db: Db, hash: string): Promise<Profilo | null> {
-  const r = ok(await db.from('interviste').select('profilo').eq('hash', hash).maybeSingle(), 'lettura profilo') as { profilo: Profilo } | null;
-  return r?.profilo ?? null;
+  const r = ok(await db.from('profili').select('punteggio').eq('hash', hash).maybeSingle(), 'lettura punteggio') as { punteggio: Profilo } | null;
+  return r?.punteggio ?? null;
 }
 
-/** Registrazione: consenso, scelta dell'Italia (per sempre) e intervista, in un colpo solo. */
+/**
+ * Registrazione: consenso, scelta dell'Italia (per sempre) e intervista, in un colpo solo.
+ *
+ * Le risposte NON vengono salvate: servono qui per la convalida (completezza, blocco
+ * minorenni) e per calcolare il punteggio, poi restano solo in memoria per la durata della
+ * richiesta. Nel database finisce il solo punteggio, che basta al confronto di fine partita
+ * anche se la partita dura giorni e viene chiusa e riaperta.
+ */
 export async function registra(
   db: Db,
   hash: string,
@@ -41,10 +48,10 @@ export async function registra(
 
   const profilo = calcolaProfilo(dati.risposte);
   ok(await db.from('giocatori').insert({ hash, side: dati.side, consenso_dati_delicati_at: ora.toISOString() }), 'registrazione');
-  const res = await db.from('interviste').insert({ hash, risposte: dati.risposte, profilo });
+  const res = await db.from('profili').insert({ hash, punteggio: profilo });
   if (res.error) {
-    await db.from('giocatori').delete().eq('hash', hash); // niente giocatori senza intervista
-    throw new Error(`intervista: ${res.error.message}`);
+    await db.from('giocatori').delete().eq('hash', hash); // niente giocatori senza punteggio
+    throw new Error(`punteggio: ${res.error.message}`);
   }
   return profilo;
 }
@@ -160,7 +167,7 @@ export async function ultimaChiusa(db: Db, hash: string): Promise<RigaSessione |
   return r[0] ?? null;
 }
 
-/** Diritto all'oblio: cancella giocatore, intervista, sessioni e record (a cascata). */
+/** Diritto all'oblio: cancella giocatore, punteggio, sessioni e record (a cascata). */
 export async function cancellaDati(db: Db, hash: string): Promise<void> {
   ok(await db.from('giocatori').delete().eq('hash', hash), 'cancellazione');
 }
