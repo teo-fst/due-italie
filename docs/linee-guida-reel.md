@@ -44,3 +44,26 @@ Testo ricostruito via OCR dei sottotitoli (le parole mancanti sono tra parentesi
 | R9 | Sabato i risultati: lavoro, prezzi, debito, gente | Indicatori: occupazione, inflazione, debito/PIL, gradimento |
 | R10 | Si parte a 1.000 | Il primo turno si apre quando 1.000 utenti hanno scelto la loro Italia |
 | R11 | Vince chi "arriva più lontano" | Punteggio composito confrontato ogni sabato |
+
+## Versione 2 (15/11/2026) – modifiche richieste dal committente
+
+Sostituiscono R4, R6, R8 (in parte), R9 (in parte) e R10. Restano valide R1, R2, R3, R5, R7, R11.
+
+| # | Regola v2 | Implementazione |
+|---|-----------|-----------------|
+| V1 | **Niente partenza a 1.000 iscritti** | Rimossa: si gioca subito |
+| V2 | **Mondo individuale, una sola Italia**: si gioca solo con l'Italia scelta e si vede come le partite passate divergono | Nessuna "altra Italia" simulata; confronto tra le proprie partite |
+| V3 | **Partita su richiesta**; si vota all'avvio (il "lunedì" della partita) | Una legge per ciascuno dei 5 temi |
+| V4 | **1 ora = 1 mese**; gli imprevisti accadono durante la giornata | 24 mesi = 24 ore; probabilità mensili dalla ricerca, eventi stagionali |
+| V5 | **Intervista di 30 domande** solo alla registrazione: politica (sinistra/destra, liberismo, federalismo), economia/lavoro, età, genere, orientamento sessuale | `lib/intervista/domande.ts`; tutte le delicate con «Preferisco non rispondere»; minorenni esclusi |
+| V5b | **Codice fiscale solo per l'anno di nascita**, poi dimenticato | Letto e verificato nel browser; al server arriva solo l'anno; il campo si svuota subito |
+| V6 | A fine partita: quanto il profilo è **coerente o si discosta** dal gioco | `confrontaConGioco` in `lib/intervista/profilo.ts` |
+| V7 | **Esperimento sociale con hash per giocatore**: si salvano scelta iniziale e "timing di vita" | HMAC-SHA256 con chiave segreta; tabelle senza id utente; vedi `docs/privacy.md` |
+| V8 | **Grafico**: ultime 5 partite sovrapposte, destra grigio pieno, sinistra grigio tratteggiato, record arancione (sesta linea se disponibile) | `lib/sessioni.ts`, `app/storico/` |
+| V9 | **Conservazione**: ultime 30 partite + record salvato a parte (es. 40 partite, record la 6 → restano 11…40 e la 6) | `sessioniDaCancellare`, tabella `record_sessioni` |
+| V10 | Partenza **"calma" 2025** | Occupazione 62,6%, inflazione 1,6%, debito 136,7% |
+| V11 | **Scala d'impatto degli imprevisti**: modificano il grafico della partita (il crollo di un ponte pesa meno di un colpo di Stato) | `impatto` 1-5 su ogni evento; cerchi sul grafico grandi quanto l'impatto |
+
+Scelte di interpretazione da confermare: durata partita 24 mesi; record = miglior traguardo finale;
+la priorità dichiarata nell'intervista si confronta con la partenza della partita; il federalismo non è
+ancora misurabile nel gioco (nessuna legge sul tema).

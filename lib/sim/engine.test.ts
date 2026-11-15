@@ -1,142 +1,192 @@
-// Esecuzione: npm run test:sim   (node --import tsx --test lib/sim/*.test.ts)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { CATALOG, TOPICS, proposalsFor, topicForYear, getProposal, assertCatalogVerified } from './catalog';
-import { EVENTI, tiraDado } from './events';
-import { risolviAnno, statoIniziale, leggeVincente, punteggio, STATO_INIZIALE } from './engine';
-import { SIDES, type Effect, type Side } from './types';
+import { CATALOG, TOPICS, proposalsFor, validaLeggi, assertCatalogVerified } from './catalog';
+import { EVENTI, probabilitaMese } from './events';
+import {
+  simulaSessione, estraiEventi, profilo, valoreContributo, mesiTrascorsi, esposizioneGas,
+  STATO_INIZIALE, MESI_SESSIONE, MS_PER_MESE,
+} from './engine';
+import { IMPATTO_LABEL, type Side } from './types';
 
-const tranquillo = EVENTI[4];
+const prime = (side: Side) => TOPICS.map((t) => proposalsFor(side, t)[0].code);
+const seconde = (side: Side) => TOPICS.map((t) => proposalsFor(side, t)[1].code);
 
-test('R1: le due Italie partono identiche', () => {
-  const a = statoIniziale('sinistra');
-  const b = statoIniziale('destra');
-  assert.deepEqual({ ...a, side: null }, { ...b, side: null });
-});
-
-test('neutralità: stesso numero di proposte per tema e per parte', () => {
+test('catalogo: stesso numero di proposte per parte e per tema, codici univoci', () => {
   for (const t of TOPICS) {
-    assert.equal(proposalsFor('sinistra', t).length, proposalsFor('destra', t).length, t);
-    assert.ok(proposalsFor('sinistra', t).length >= 2, `almeno 2 opzioni per ${t}`);
+    assert.equal(proposalsFor('sinistra', t).length, 2, t);
+    assert.equal(proposalsFor('destra', t).length, 2, t);
   }
-});
-
-test('neutralità: nessuna proposta è "gratis" (almeno un pro e un contro)', () => {
-  // occupazione e gradimento: su = bene; inflazione e debito: su = male
-  const segno = (k: keyof Effect, v: number) =>
-    (k === 'inflazione' || k === 'debito' ? -v : v);
-  for (const p of CATALOG) {
-    const tot: Effect = { ...p.immediato };
-    for (const [k, v] of Object.entries(p.ritardato?.effetto ?? {})) {
-      tot[k as keyof Effect] = (tot[k as keyof Effect] ?? 0) + (v as number);
-    }
-    const valori = Object.entries(tot).map(([k, v]) => segno(k as keyof Effect, v as number));
-    assert.ok(valori.some((v) => v > 0), `${p.code} non ha vantaggi`);
-    assert.ok(valori.some((v) => v < 0), `${p.code} non ha costi`);
-  }
-});
-
-test('neutralità: ampiezza totale degli effetti comparabile (±25%)', () => {
-  const ampiezza = (side: Side) =>
-    CATALOG.filter((p) => p.side === side).reduce((acc, p) => {
-      const tutti = [...Object.values(p.immediato), ...Object.values(p.ritardato?.effetto ?? {})];
-      return acc + tutti.reduce((a, v) => a + Math.abs(v as number), 0);
-    }, 0);
-  const sx = ampiezza('sinistra');
-  const dx = ampiezza('destra');
-  assert.ok(Math.abs(sx - dx) / Math.max(sx, dx) <= 0.25, `sinistra=${sx.toFixed(2)} destra=${dx.toFixed(2)}`);
-});
-
-test('codici proposta univoci e prefisso coerente con la parte', () => {
   const codes = CATALOG.map((p) => p.code);
   assert.equal(new Set(codes).size, codes.length);
   for (const p of CATALOG) assert.ok(p.code.startsWith(p.side === 'sinistra' ? 'sx-' : 'dx-'), p.code);
 });
 
-test('R5/R6: un tema per anno a rotazione da 2026', () => {
-  assert.equal(topicForYear(2026), 'casa');
-  assert.equal(topicForYear(2027), 'immigrazione');
-  assert.equal(topicForYear(2030), 'casa');
+test('neutralità: ogni proposta dichiara pro, contro, confidenza e almeno una fonte', () => {
+  for (const p of CATALOG) {
+    assert.ok(p.pro.length > 5 && p.contro.length > 5, p.code);
+    assert.ok(['alta', 'media', 'bassa'].includes(p.confidenza), p.code);
+    assert.ok(p.fonti.length > 0, p.code);
+    assert.ok(p.liberismo >= -1 && p.liberismo <= 1, p.code);
+  }
+  for (const e of EVENTI) assert.ok(e.fonti.length > 0 && e.pAnno > 0 && e.pAnno < 1, e.code);
 });
 
-test('R6: ogni turno avanza di un anno', () => {
-  const { stato } = risolviAnno(statoIniziale('destra'), null, tranquillo);
-  assert.equal(stato.anno, 2027);
+test('validaLeggi: una per tema e solo della propria Italia', () => {
+  assert.doesNotThrow(() => validaLeggi('sinistra', prime('sinistra')));
+  assert.throws(() => validaLeggi('sinistra', prime('destra')));
+  assert.throws(() => validaLeggi('destra', prime('destra').slice(1)));
+  const doppia = [...prime('destra')];
+  doppia[1] = doppia[0];
+  assert.throws(() => validaLeggi('destra', doppia));
 });
 
-test('una legge della parte sbagliata viene rifiutata', () => {
-  assert.throws(() =>
-    risolviAnno(statoIniziale('destra'), getProposal('sx-tasse-evasione'), tranquillo));
+test('profilo: ritardo, rampa, durata, rientro', () => {
+  const c = { ritardo: 2, rampa: 4, durata: 3, rientro: 2 };
+  assert.equal(profilo(c, 2), 0);
+  assert.equal(profilo(c, 4), 0.5);
+  assert.equal(profilo(c, 7), 1);
+  assert.equal(profilo(c, 10), 0.5);
+  assert.equal(profilo(c, 11), 0);
+  assert.equal(profilo({ ritardo: 0 }, 50), 1, 'permanente per default');
 });
 
-test('effetti ritardati maturano dopo N anni', () => {
-  const legge = getProposal('dx-energia-nucleare'); // ritardo 5 anni
-  let { stato } = risolviAnno(statoIniziale('destra'), legge, tranquillo);
-  assert.equal(stato.pending.length, 1);
-  assert.equal(stato.pending[0].anno, 2032);
-  for (let i = 0; i < 4; i++) ({ stato } = risolviAnno(stato, null, tranquillo));
-  assert.equal(stato.anno, 2031);
-  assert.equal(stato.pending.length, 1, 'non ancora maturato');
-  ({ stato } = risolviAnno(stato, null, tranquillo));
-  assert.equal(stato.anno, 2032);
-  assert.equal(stato.pending.length, 0, 'maturato nel 2032');
+test('flusso: 0,6 punti l\'anno diventano 1,2 in 24 mesi', () => {
+  const v = valoreContributo({ indicatore: 'debito', tipo: 'flusso', valore: 0.6, ritardo: 0 }, 24);
+  assert.ok(Math.abs(v - 1.2) < 1e-9);
 });
 
-test('R8: stesso dado, stesse leggi nulle → stessi risultati nelle due Italie', () => {
-  for (const f of [1, 2, 3, 4, 5, 6] as const) {
-    const a = risolviAnno(statoIniziale('sinistra'), null, EVENTI[f]).report.dopo;
-    const b = risolviAnno(statoIniziale('destra'), null, EVENTI[f]).report.dopo;
-    assert.deepEqual(a, b, `faccia ${f}`);
+test('probabilità mensili: eventi stagionali solo nei loro mesi', () => {
+  const siccita = EVENTI.find((e) => e.code === 'siccita')!;
+  assert.equal(probabilitaMese(siccita, 1), 0);
+  assert.ok(probabilitaMese(siccita, 7) > 0);
+  const p = probabilitaMese(EVENTI.find((e) => e.code === 'spread')!, 3);
+  assert.ok(Math.abs(1 - Math.pow(1 - p, 12) - 0.07) < 1e-12, 'riconverte alla probabilità annua');
+});
+
+test('stesso seme e stesse leggi: stessa storia (deterministico)', () => {
+  const input = { seed: 12345, side: 'sinistra' as const, leggi: prime('sinistra') };
+  assert.deepEqual(simulaSessione(input), simulaSessione(input));
+});
+
+test('a prefisso: 10 mesi coincidono con i primi 10 di una sessione intera', () => {
+  const input = { seed: 777, side: 'destra' as const, leggi: seconde('destra') };
+  const corta = simulaSessione(input, 10);
+  const lunga = simulaSessione(input, 24);
+  assert.deepEqual(corta.serie, lunga.serie.slice(0, 11));
+  assert.deepEqual(corta.eventi, lunga.eventi.filter((e) => e.mese <= 10));
+});
+
+test('ogni partita parte dallo stesso stato; gli imprevisti dipendono solo dal seme', () => {
+  const a = simulaSessione({ seed: 42, side: 'sinistra', leggi: prime('sinistra') });
+  const b = simulaSessione({ seed: 42, side: 'sinistra', leggi: seconde('sinistra') });
+  const c = simulaSessione({ seed: 43, side: 'sinistra', leggi: prime('sinistra') });
+  assert.deepEqual(a.serie[0], b.serie[0]);
+  assert.equal(a.serie[0].debito, STATO_INIZIALE.debito);
+  assert.equal(a.serie.length, MESI_SESSIONE + 1);
+  assert.deepEqual(a.eventi, b.eventi, 'stesso seme, stessi imprevisti anche con leggi diverse');
+  assert.notDeepEqual(a.serie, b.serie, 'leggi diverse, partite che divergono');
+  assert.notDeepEqual(a.eventi, c.eventi);
+});
+
+test('scala d\'impatto: ogni imprevisto ha un livello 1-5, ponte 1 e colpo di Stato 5', () => {
+  for (const e of EVENTI) assert.ok(IMPATTO_LABEL[e.impatto], e.code);
+  assert.equal(EVENTI.find((e) => e.code === 'crollo-ponte')!.impatto, 1);
+  assert.equal(EVENTI.find((e) => e.code === 'colpo-di-stato')!.impatto, 5);
+});
+
+test('un colpo di Stato pesa sul traguardo molto più del crollo di un ponte', () => {
+  const effetto = (code: string) => {
+    const e = EVENTI.find((x) => x.code === code)!;
+    let peggio = 0;
+    for (const c of e.effetti) {
+      const v = valoreContributo(c, 12);
+      peggio += c.indicatore === 'occupazione' ? v : c.indicatore === 'gradimento' ? v * 0.2 : c.indicatore === 'debito' ? -v * 0.05 : -Math.abs(v) * 2;
+    }
+    return peggio;
+  };
+  assert.ok(effetto('colpo-di-stato') < effetto('crollo-ponte') * 10);
+});
+
+test('il nucleare non cambia i prezzi entro i 24 mesi della sessione', () => {
+  const nucleare = CATALOG.filter((p) => p.code === 'dx-energia-nucleare');
+  assert.equal(esposizioneGas(nucleare, 24), 1);
+  const rinnovabili = CATALOG.filter((p) => p.code === 'sx-energia-rinnovabili');
+  assert.ok(esposizioneGas(rinnovabili, 36) < 1);
+});
+
+test('una crisi energetica pesa meno sull\'inflazione con le rinnovabili attive', () => {
+  // cerca un seme con una crisi energetica tra il mese 13 e il 18
+  let seed = 1;
+  for (; seed < 50_000; seed++) {
+    const ev = estraiEventi(seed).flatMap((l, mese) => l.map((e) => ({ mese, code: e.code })));
+    if (ev.some((e) => e.code === 'crisi-energetica' && e.mese >= 13 && e.mese <= 18)) break;
+  }
+  const conRinnovabili = TOPICS.map((t) => t === 'energia' ? 'sx-energia-rinnovabili' : proposalsFor('sinistra', t)[0].code);
+  const conBonus = TOPICS.map((t) => t === 'energia' ? 'sx-energia-bonus-bollette' : proposalsFor('sinistra', t)[0].code);
+  const a = simulaSessione({ seed, side: 'sinistra', leggi: conRinnovabili });
+  const b = simulaSessione({ seed, side: 'sinistra', leggi: conBonus });
+  const piccoA = Math.max(...a.serie.map((p) => p.inflazione));
+  const piccoB = Math.max(...b.serie.map((p) => p.inflazione));
+  assert.ok(piccoA < piccoB, `rinnovabili ${piccoA} vs bonus ${piccoB}`);
+});
+
+test('leggi della parte sbagliata rifiutate dal motore', () => {
+  assert.throws(() => simulaSessione({ seed: 1, side: 'destra', leggi: prime('sinistra') }));
+});
+
+test('Monte Carlo: frequenze degli imprevisti coerenti con le probabilità annue', () => {
+  const N = 4000;
+  const conteggi: Record<string, number> = {};
+  for (let seed = 1; seed <= N; seed++) {
+    const primoAnno = estraiEventi(seed * 7919).slice(1, 13).flat();
+    for (const e of new Set(primoAnno.map((x) => x.code))) {
+      conteggi[e] = (conteggi[e] ?? 0) + 1;
+    }
+  }
+  for (const e of EVENTI) {
+    const freq = (conteggi[e.code] ?? 0) / N;
+    assert.ok(Math.abs(freq - e.pAnno) < 0.04, `${e.code}: atteso ${e.pAnno}, osservato ${freq}`);
   }
 });
 
-test('la pandemia pesa di più sul debito se il debito è più alto', () => {
-  const basso = { ...statoIniziale('sinistra'), debito: 90 };
-  const alto = { ...statoIniziale('sinistra'), debito: 160 };
-  const dBasso = risolviAnno(basso, null, EVENTI[2]).report.dopo.debito - 90;
-  const dAlto = risolviAnno(alto, null, EVENTI[2]).report.dopo.debito - 160;
-  assert.ok(dAlto > dBasso);
+test('indicatori nei limiti in 500 sessioni casuali', () => {
+  for (let seed = 1; seed <= 500; seed++) {
+    for (const side of ['sinistra', 'destra'] as const) {
+      const r = simulaSessione({ seed, side, leggi: seconde(side) });
+      for (const p of r.serie) {
+        assert.ok(p.gradimento >= 0 && p.gradimento <= 100);
+        assert.ok(p.occupazione > 50 && p.occupazione < 70, `occ ${p.occupazione}`);
+        assert.ok(Number.isFinite(p.punteggio));
+      }
+    }
+  }
 });
 
-test('gli indicatori restano nei limiti anche dopo 50 anni di sfortuna', () => {
-  let s = statoIniziale('sinistra');
-  for (let i = 0; i < 50; i++) s = risolviAnno(s, null, EVENTI[2]).stato;
-  assert.ok(s.gradimento >= 0 && s.gradimento <= 100);
-  assert.ok(s.occupazione >= 30);
+test('mesi trascorsi: 1 ora = 1 mese, massimo 24', () => {
+  const t0 = new Date('2026-11-15T10:00:00Z');
+  assert.equal(mesiTrascorsi(t0, t0), 0);
+  assert.equal(mesiTrascorsi(t0, new Date(t0.getTime() + MS_PER_MESE - 1)), 0);
+  assert.equal(mesiTrascorsi(t0, new Date(t0.getTime() + 5 * MS_PER_MESE)), 5);
+  assert.equal(mesiTrascorsi(t0, new Date(t0.getTime() + 100 * MS_PER_MESE)), 24);
 });
 
-test('legge vincente: maggioranza, pareggio deterministico, nessun voto', () => {
-  assert.equal(leggeVincente({ 'sx-a': 3, 'sx-b': 5 }), 'sx-b');
-  assert.equal(leggeVincente({ 'sx-b': 4, 'sx-a': 4 }), 'sx-a');
-  assert.equal(leggeVincente({}), null);
-  assert.equal(leggeVincente({ 'sx-a': 0 }), null);
-});
-
-test('dado: solo facce 1-6', () => {
-  for (let i = 0; i < 6; i++) assert.equal(tiraDado(() => i), i + 1);
-  assert.throws(() => tiraDado(() => 6));
-});
-
-test('R7: il controllo fonti blocca proposte non verificate', () => {
+test('R7: STRICT_SOURCES blocca finché le proposte non sono verificate', () => {
   assert.throws(() => assertCatalogVerified());
   assert.doesNotThrow(() => assertCatalogVerified(CATALOG.map((p) => ({ ...p, verificato: true }))));
 });
 
-test('simulazione di 8 anni: deterministica e stampabile', () => {
-  const dadi = [1, 4, 6, 2, 3, 5, 4, 4] as const;
-  const stati = Object.fromEntries(SIDES.map((s) => [s, statoIniziale(s)]));
-  for (let i = 0; i < dadi.length; i++) {
-    const anno = stati.sinistra.anno;
-    const tema = topicForYear(anno);
-    for (const side of SIDES) {
-      const legge = proposalsFor(side, tema)[i % 2];
-      stati[side] = risolviAnno(stati[side], legge, EVENTI[dadi[i]]).stato;
-    }
-  }
-  assert.equal(stati.sinistra.anno, 2034);
-  assert.equal(stati.destra.anno, 2034);
+test('stampa due partite di esempio (VERBOSE=1)', () => {
+  const a = simulaSessione({ seed: 2026, side: 'sinistra', leggi: prime('sinistra') });
+  const b = simulaSessione({ seed: 2026, side: 'sinistra', leggi: seconde('sinistra') });
   if (process.env.VERBOSE) {
-    console.table(SIDES.map((s) => ({ side: s, ...stati[s], pending: stati[s].pending.length, punteggio: punteggio(stati[s]) })));
+    console.log('eventi', a.eventi);
+    console.table([0, 6, 12, 18, 24].map((m) => ({
+      mese: m, a_occ: a.serie[m].occupazione, b_occ: b.serie[m].occupazione,
+      a_inf: a.serie[m].inflazione, b_inf: b.serie[m].inflazione,
+      a_deb: a.serie[m].debito, b_deb: b.serie[m].debito,
+      a_gr: a.serie[m].gradimento, b_gr: b.serie[m].gradimento,
+      a_pt: a.serie[m].punteggio, b_pt: b.serie[m].punteggio,
+    })));
   }
-  assert.ok(Number.isFinite(punteggio(STATO_INIZIALE)));
+  assert.equal(a.mesi, 24);
 });

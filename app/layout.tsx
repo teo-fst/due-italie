@@ -15,8 +15,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <nav className="top" aria-label="Navigazione principale">
           <Link href="/">Home</Link>
-          <Link href="/vota">Vota</Link>
-          <Link href="/risultati">Risultati</Link>
+          <Link href="/sessione">Gioca</Link>
+          <Link href="/storico">Storico</Link>
+          <Link href="/metodo">Metodo</Link>
+          <Link href="/privacy">Privacy</Link>
         </nav>
         <main>{children}</main>
       </body>
